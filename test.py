@@ -114,7 +114,7 @@ def isAnswerKeySeparate(s):
 
 
 def getTopics(file_name):
-    f = open('C:/Users/DELL/Downloads/' + file_name + '.txt', "r", encoding='utf-8')
+    f = open(file_name, "r", encoding='utf-8')
     data = f.read()
     text = data.split('\n')
     temp = []
@@ -144,7 +144,7 @@ def getTopics(file_name):
             else:
                 break
     except:
-        print('Questions regarding ', filename)
+        print('Questions regarding ', file_name)
     t = ('\n').join(temp)
     return t
 
@@ -176,7 +176,7 @@ if __name__ == "__main__":
     if not isScanned(file_name):
         text = convert_pdf_to_string(file_name)
         textfilename='finaltext.txt'
-        text_file = open(textfilename, 'w')
+        text_file = open(textfilename, 'w', encoding='utf-8')
         n = text_file.write(text)
         text_file.close()
 
