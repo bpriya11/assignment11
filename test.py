@@ -133,7 +133,7 @@ def getTopics(file_name):
                 break
             for j in range(len(temp)):
                 if (i != '' and i != ' ') and re.search(i, temp[j]):
-                    if re.match(r'\d', i):
+                    if re.match(r'\d', i) or re.match('•',i):
                         continue
                     else:
                         # print(i)
