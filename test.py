@@ -67,9 +67,9 @@ def getBookLanguage(text):
             english += 1
         total += 1
 
-    print(hindi / total)
-    print(english)
-    print(total)
+    #print(hindi / total)
+    #print(english)
+    #print(total)
     if ((hindi / total) * 100) > 25:
         return "Hindi"
     return "English"
