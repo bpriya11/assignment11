@@ -1,5 +1,6 @@
 import json
 import re
+import pdfplumber
 from io import StringIO
 from PyPDF2 import PdfFileReader, PdfFileWriter
 from pdfminer.converter import TextConverter
@@ -173,7 +174,7 @@ def getTopics(file_name):
             else:
                 break
     except:
-        print('Questions regarding ', file_name)
+        pass
     t = ('\n').join(temp)
     return t
 
@@ -265,7 +266,8 @@ if __name__ == "__main__":
         print('Error in Method --> isScanned')
 
     try:
-        result['Topics'] = getTopics(textfilename)
+        if(getTopics(textfilename)!=''):
+            result['Topics'] = getTopics(textfilename)
     except:
         print('Error in Method -->  getTopics')
 
