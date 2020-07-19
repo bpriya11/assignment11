@@ -97,8 +97,32 @@ def isScanned(file_name):
     return False
 
 
+
 def getQuestionStart(file_name):
-    pass
+    cnt=0
+    #p='pdf_based_pdf.pdf'
+    pdf=PdfFileReader(file_name)
+    li_option=['(a)','(b)','(c)','(d)']
+    count=pdf.getNumPages()
+    with pdfplumber.open(r'pdf_based_pdf.pdf') as pdf:
+        for i in range(count):
+            page_text = pdf.pages[i].extract_text()
+            if '1.' in page_text:
+                find_first=page_text.find('1.')
+                find_next=page_text.find('2.',find_first)
+                x= page_text[find_first:find_next]
+            #print(page_text[find_first: find_next])
+                for j in li_option:
+                    if j not in  x:
+                        break
+                    else:
+                        cnt+=1
+                if cnt==4:
+                    print('page number =',i+1)
+                    result['Questions are starting from page no =']=i+1
+                    result['Type of Question']='MCQ based question'
+                    break
+                    
 
 
 def isAnswerKeySeparate(s):
@@ -217,6 +241,13 @@ if __name__ == "__main__":
         text_file = open(textfilename, 'w', encoding='utf-8')
         n = text_file.write(text)
         text_file.close()
+
+    
+    
+    try:
+        getQuestionStart(file_name)
+    except:
+        print('Error in Method -->  getQuestionStart')
 
     try:
         getBookName_and_author_name(file_name)
