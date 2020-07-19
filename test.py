@@ -12,40 +12,45 @@ from pdfminer.converter import PDFPageAggregator
 import sys
 import fitz
 import filetype
+import PyPDF2
+from PIL import Image
 
-#result is output dict
-result={}
+# result is output dict
+result = {}
 
 
 def convert_pdf_to_string(file_path):
+    output_string = StringIO()
+    laparams = LAParams()
+    laparams.all_texts = True
+    with open(file_path, 'rb') as in_file:
+        parser = PDFParser(in_file)
+        doc = PDFDocument(parser)
+        rsrcmgr = PDFResourceManager()
+        device = TextConverter(rsrcmgr, output_string, laparams=LAParams())
+        interpreter = PDFPageInterpreter(rsrcmgr, device)
+        for page in PDFPage.create_pages(doc):
+            interpreter.process_page(page)
 
-	output_string = StringIO()
-	laparams = LAParams()
-	laparams.all_texts = True
-	with open(file_path, 'rb') as in_file:
-	    parser = PDFParser(in_file)
-	    doc = PDFDocument(parser)
-	    rsrcmgr = PDFResourceManager()
-	    device = TextConverter(rsrcmgr, output_string, laparams=LAParams())
-	    interpreter = PDFPageInterpreter(rsrcmgr, device)
-	    for page in PDFPage.create_pages(doc):
-	        interpreter.process_page(page)
-
-	return(output_string.getvalue())
+    return (output_string.getvalue())
 
 
 def ocrtotext():
     pass
 
+
 def getBookName_and_author_name(file_name):
-    with open(file_name, 'rb') as f:
+    path = file_name
+    with open(path, 'rb') as f:
         pdf = PdfFileReader(f)
         info = pdf.getDocumentInfo()
+        number_of_pages = pdf.getNumPages()
 
-    title = info.title
-    result["Title"]= title
-    author = info.author
-    result["Author"]= author
+    result['author'] = info.author
+    result['creator'] = info.creator
+    result['producer'] = info.producer
+    result['subject'] = info.subject
+    result['title'] = info.title
     return result
 
 
@@ -118,7 +123,7 @@ def getTopics(file_name):
     data = f.read()
     text = data.split('\n')
     temp = []
-    list = ['Contents', 'Content', 'CONTENT', 'Index', 'index', 'Table of Contents']
+    list = ['Contents', 'Content', 'CONTENT', 'Index', 'index', 'Table of Contents', '\x0cTable of Contents ']
 
     for i in list:
         if i in text:
@@ -133,7 +138,7 @@ def getTopics(file_name):
                 break
             for j in range(len(temp)):
                 if (i != '' and i != ' ') and re.search(i, temp[j]):
-                    if re.match(r'\d', i) or re.match('•',i):
+                    if re.match(r'\d', i) or re.match('•', i):
                         continue
                     else:
                         # print(i)
@@ -153,29 +158,62 @@ def isExamYearMentioned(s):
     start_index = s.find('1.')
     end_index = s.find('2.')
     mylist = [s[start_index:end_index]]
-    match = re.match(r'.*([1-3][0-9]{3})', mylist)
-    if match is not None:
-        return True
+    for l in mylist:
+        match = re.match(r'.*([1-3][0-9]{3})', l)
+        if match is not None:
+            return True
+            break
     else:
         return False
 
 
-def getContentType():
-    pass
+def getContentType(textfile):
+    f = open(textfile, "r", encoding='utf-8')
+    data = f.read()
+    text = data.split('\n')
+    questions = []
+    temp = ''
+    state = 0
+    for line in text:
+        if re.match(r'\d{1,3}\.', line) or state:
+            temp += line
+            state = 1
+
+        if re.match(r"\(d\)", line):
+            # temp += line
+            questions.append(temp)
+            temp = ""
+            state = 0
+    if (len(questions)==0):
+        return 'other'
+    else:
+        return 'questions'
 
 
-def areQuestionsImageBased():
-    pass
+
+def areQuestionsImageBased(filename):
+    input1 = PyPDF2.PdfFileReader(open(filename, "rb"))
+    pdfFilePageCount = input1.numPages
+    for i in range(2, pdfFilePageCount):
+        page = input1.getPage(i)
+        try:
+            xObject = page['/Resources']['/XObject'].getObject()
+        except:
+            continue
+        for obj in xObject:
+            if xObject[obj]['/Subtype'] == '/Image':
+                return True
+    return False
 
 
 if __name__ == "__main__":
     # enter the name of the pdf without any extension
     file = input("Enter the name of the pdf: ")
-    file_name=file+'.pdf'
+    file_name = file + '.pdf'
 
     if not isScanned(file_name):
         text = convert_pdf_to_string(file_name)
-        textfilename='finaltext.txt'
+        textfilename = 'finaltext.txt'
         text_file = open(textfilename, 'w', encoding='utf-8')
         n = text_file.write(text)
         text_file.close()
@@ -183,44 +221,48 @@ if __name__ == "__main__":
     try:
         getBookName_and_author_name(file_name)
     except:
-        pass
+        print('Error in Method -->  getBookName_and_author_name')
 
     try:
         result['Language'] = getBookLanguage(textfilename)
     except:
-        pass
+        print('Error in Method -->  getBookLanguage')
 
     try:
         result['Scanned'] = isScanned(file_name)
     except:
-        pass
+        print('Error in Method --> isScanned')
 
     try:
         result['Topics'] = getTopics(textfilename)
     except:
-        pass
+        print('Error in Method -->  getTopics')
 
     try:
-        result['Exam year mentioned'] = isExamYearMentioned(textfilename)
+        result['ContentType'] = getContentType(textfilename)
     except:
-        pass
+        print('Error in Method -->  getContentType')
+
+    try:
+        if not isScanned(file_name):
+            if getContentType(textfilename) == 'questions':
+                result['areQuestionsImageBased'] = areQuestionsImageBased(file_name)
+    except:
+        print('Error in Method -->  areQuestionsImageBased')
+
+    try:
+        result['Exam year mentioned'] = isExamYearMentioned(text)
+    except:
+        print('Error in Method -->  isExamYearMentioned')
 
     try:
         result['Ans with ques'] = isAnswerKeySeparate(textfilename)
     except:
-        pass
+        print('Error in Method -->   isAnswerKeySeparate ')
 
-    print(result)
+    # ---------------printing result----------------#
+    for i in result:
+        print(i, '-->', result[i])
 
-
-###YE MUJHE SMAJH NHI AYA
-filename = "/path/to/file.jpg"
-
-if filetype.image(filename):
-    print(f"{filename} is a valid image...")
-elif filetype.video(filename):
-    print(f"{filename} is a valid video...")
-else:
-    print("no image")
-
-
+# filename = "decrypted 1.pdf"
+# filename = "ECONOMY 700 MCQs with Explanatory Note.pdf"
